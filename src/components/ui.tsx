@@ -2,6 +2,7 @@ import type { CaseStatus, RiskLevel } from "@prisma/client";
 
 const STATUS_STYLES: Record<CaseStatus, string> = {
   PENDING: "bg-slate-100 text-slate-700 ring-slate-300",
+  AWAITING_SECOND_APPROVAL: "bg-violet-50 text-violet-700 ring-violet-300",
   APPROVED: "bg-emerald-50 text-emerald-700 ring-emerald-300",
   REJECTED: "bg-rose-50 text-rose-700 ring-rose-300",
   MORE_INFO_REQUESTED: "bg-sky-50 text-sky-700 ring-sky-300",

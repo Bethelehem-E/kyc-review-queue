@@ -49,7 +49,7 @@ All seeded users share the password `AnalystPass123!` (override with `SEED_PASSW
 | Email | Role |
 |---|---|
 | `analyst@kycdemo.test` | Analyst |
-| `rmartin@kycdemo.test` | Analyst |
+| `rmartin@kycdemo.test` | Reviewer (can countersign) |
 | `admin@kycdemo.test` | Admin |
 
 These exist **only** for the local prototype. See [`docs/security.md`](docs/security.md) for swapping in a real identity provider.
@@ -86,6 +86,7 @@ No secrets are committed; `.env` is gitignored and `.env.example` holds placehol
 - `tests/authorization.test.ts` — unauthenticated and malformed sessions rejected at the service layer *and* by the API routes (401), role gate on deciding, and the happy path for an authenticated analyst.
 - `tests/reason-validation.test.ts` — script tags, HTML injection, null bytes, control characters, template injection, over/under-length reasons rejected with no partial write; SQL-shaped prose stored verbatim rather than executed.
 - `tests/audit-immutability.test.ts` — `UPDATE`, `DELETE`, and `TRUNCATE` on `audit_events` refused by the database; audit rows contain no customer PII.
+- `tests/maker-checker.test.ts` — claim/release and the assignment lock, admin override, high-risk decisions becoming proposals with no premature `Decision` row, reviewer countersign, self-countersign refused, return-to-maker, and the cases that need no second approval.
 
 ## Docs
 
@@ -93,10 +94,20 @@ No secrets are committed; `.env` is gitignored and `.env.example` holds placehol
 - [`docs/security.md`](docs/security.md) — security model, threat notes, and what to change before production
 - [`docs/maintenance.md`](docs/maintenance.md) — day-2 operations: migrations, backups, users, secrets
 
+## Maker-checker and case assignment
+
+Roles are `ANALYST` → `REVIEWER` → `ADMIN`. All three can work cases; only reviewers and admins can countersign.
+
+- **Assignment.** Any decider can claim an open case; while claimed, only the assignee (or an admin) can action it, and the assignee can release it. The queue has an `Assigned to` column and an assignment filter (mine / unclaimed).
+- **Second approval.** Approving or rejecting a **high-risk** case records a *proposal*: the case moves to `AWAITING_SECOND_APPROVAL`, the proposed outcome and reason are stored on the case, and **no `Decision` row is written yet**. A different reviewer or admin then countersigns (finalising it, with the `Decision` row attributed to the checker) or returns it to `PENDING` with a required reason. Request-more-info is not a final decision and never needs a second approver.
+- **Enforcement.** Role, assignment ownership, and the "not your own proposal" rule are checked in the service layer inside the same transaction as the write, so the server actions, the API routes (`POST /api/cases/:caseId/assignment`, `POST /api/cases/:caseId/countersign`), and any future caller all get the same behaviour. UI gating is cosmetic.
+- **Audit.** Claims, releases, proposals, countersignatures, and returns all write append-only audit rows (`CASE_CLAIMED`, `CASE_RELEASED`, `CASE_DECISION_PROPOSED`, `CASE_DECISION_RETURNED`, plus the existing approve/reject actions).
+
 ## Known limitations of this prototype
 
 - Credentials auth with seeded users, not a real IdP.
 - The queue fetches up to 200 rows and is not paginated; fine for a few hundred cases, needs server-side pagination beyond that.
 - SLA thresholds (3 and 7 days) are constants in `src/lib/services/cases.ts`, not configurable per team.
-- No bulk actions, no case assignment, no notifications, no document upload/viewing.
+- No bulk actions, no notifications, no document upload/viewing.
+- Maker-checker applies to high-risk cases only, and the threshold is a constant rather than a configurable policy.
 - Audit entries are immutable by trigger; a database superuser can still disable triggers. See `docs/security.md` for the restricted-role hardening step.

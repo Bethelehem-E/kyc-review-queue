@@ -67,9 +67,12 @@ describe("case reason validation", () => {
   });
 
   it("falls back to defaults for unknown queue filter values", () => {
-    expect(parseQueueFilter({ status: "BOGUS", risk: "NOPE", sort: "NOPE" })).toEqual({
+    expect(
+      parseQueueFilter({ status: "BOGUS", risk: "NOPE", sort: "NOPE", assignment: "NOPE" })
+    ).toEqual({
       status: "ALL",
       risk: "ALL",
+      assignment: "ALL",
       search: "",
       sort: "OLDEST",
     });

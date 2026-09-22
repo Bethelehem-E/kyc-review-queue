@@ -26,10 +26,14 @@ export function DecisionPanel({
   caseId,
   canDecide,
   decidable,
+  lockedByOther,
+  highRisk,
 }: {
   caseId: string;
   canDecide: boolean;
   decidable: boolean;
+  lockedByOther: boolean;
+  highRisk: boolean;
 }) {
   const [action, setAction] = useState<DecisionAction>("APPROVE");
   const [state, formAction, pending] = useActionState<DecisionState, FormData>(
@@ -50,8 +54,16 @@ export function DecisionPanel({
       </p>
     );
   }
+  if (lockedByOther) {
+    return (
+      <p className="text-sm text-slate-600">
+        This case is claimed by another analyst. They must release it before you can action it.
+      </p>
+    );
+  }
 
   const reasonRequired = REASON_REQUIRED_ACTIONS.includes(action);
+  const needsCountersign = highRisk && action !== "REQUEST_MORE_INFO";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -97,6 +109,13 @@ export function DecisionPanel({
         </p>
       </div>
 
+      {needsCountersign ? (
+        <p className="rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-900">
+          High risk: this will be recorded as a proposal and only takes effect once a second
+          reviewer countersigns it.
+        </p>
+      ) : null}
+
       {state.error ? (
         <p role="alert" className="text-sm text-rose-600">
           {state.error}
@@ -113,7 +132,7 @@ export function DecisionPanel({
         disabled={pending}
         className={`rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${BUTTON_STYLES[action]}`}
       >
-        {pending ? "Saving…" : `Confirm: ${LABELS[action]}`}
+        {pending ? "Saving…" : needsCountersign ? `Propose: ${LABELS[action]}` : `Confirm: ${LABELS[action]}`}
       </button>
     </form>
   );

@@ -13,7 +13,13 @@ const { GET: casesRoute } = await import("@/app/api/cases/route");
 const { GET: auditRoute } = await import("@/app/api/audit/route");
 const { createTestCase, createTestUser } = await import("./helpers");
 
-const defaultFilter = { status: "ALL", risk: "ALL", search: "", sort: "OLDEST" } as const;
+const defaultFilter = {
+  status: "ALL",
+  risk: "ALL",
+  assignment: "ALL",
+  search: "",
+  sort: "OLDEST",
+} as const;
 
 describe("authorization boundaries", () => {
   beforeEach(() => authMock.mockReset());

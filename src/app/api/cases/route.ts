@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const filter = parseQueueFilter({
       status: params.get("status") ?? undefined,
       risk: params.get("risk") ?? undefined,
+      assignment: params.get("assignment") ?? undefined,
       search: params.get("search") ?? undefined,
       sort: params.get("sort") ?? undefined,
     });

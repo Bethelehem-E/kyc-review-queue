@@ -3,7 +3,15 @@ import { notFound } from "next/navigation";
 import { CaseStatus } from "@prisma/client";
 import { AppShell } from "@/components/AppShell";
 import { AgingBadge, RiskBadge, StatusBadge, formatDate, statusLabel } from "@/components/ui";
-import { NotFoundError, agingLevel, getCaseDetail, requireActor } from "@/lib/services/cases";
+import {
+  DECIDER_ROLES,
+  NotFoundError,
+  agingLevel,
+  getCaseDetail,
+  requireActor,
+} from "@/lib/services/cases";
+import { AssignmentPanel } from "./AssignmentPanel";
+import { CountersignPanel } from "./CountersignPanel";
 import { DecisionPanel } from "./DecisionPanel";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +39,10 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
     throw error;
   }
 
+  const awaitingSecondApproval = detail.status === CaseStatus.AWAITING_SECOND_APPROVAL;
+  const isChecker = actor.role === "REVIEWER" || actor.role === "ADMIN";
+  const isMaker = detail.proposedBy?.id === actor.id;
+
   return (
     <AppShell actor={actor}>
       <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">
@@ -57,6 +69,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
             <Field label="KYC status" value={statusLabel(detail.status)} />
             <Field label="Risk level" value={detail.riskLevel} />
             <Field label="Submitted" value={formatDate(detail.submittedAt)} />
+            <Field label="Assigned to" value={detail.assignedTo?.name ?? "Unclaimed"} />
           </dl>
 
           <h2 className="mt-8 text-sm font-semibold text-slate-900">Risk flags</h2>
@@ -101,14 +114,50 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ cas
         </section>
 
         <div className="space-y-6">
+          {DECIDABLE.includes(detail.status) ? (
+            <section className="rounded-lg border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-900">Assignment</h2>
+              <div className="mt-3">
+                <AssignmentPanel
+                  caseId={detail.caseId}
+                  assignee={detail.assignedTo}
+                  heldByMe={detail.assignedTo?.id === actor.id}
+                />
+              </div>
+            </section>
+          ) : null}
+
           <section className="rounded-lg border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Decision</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {awaitingSecondApproval ? "Second approval" : "Decision"}
+            </h2>
             <div className="mt-4">
-              <DecisionPanel
-                caseId={detail.caseId}
-                canDecide={actor.role === "ANALYST" || actor.role === "ADMIN"}
-                decidable={DECIDABLE.includes(detail.status)}
-              />
+              {awaitingSecondApproval && detail.proposedStatus ? (
+                <CountersignPanel
+                  caseId={detail.caseId}
+                  proposedStatus={statusLabel(detail.proposedStatus)}
+                  proposedBy={detail.proposedBy?.name ?? "Another analyst"}
+                  proposedReason={detail.proposedReason}
+                  canCountersign={isChecker && !isMaker}
+                  blockedReason={
+                    isMaker
+                      ? "You proposed this decision. A different reviewer must countersign it."
+                      : "Only a reviewer or admin can countersign a proposed decision."
+                  }
+                />
+              ) : (
+                <DecisionPanel
+                  caseId={detail.caseId}
+                  canDecide={DECIDER_ROLES.includes(actor.role)}
+                  decidable={DECIDABLE.includes(detail.status)}
+                  lockedByOther={
+                    !!detail.assignedTo &&
+                    detail.assignedTo.id !== actor.id &&
+                    actor.role !== "ADMIN"
+                  }
+                  highRisk={detail.riskLevel === "HIGH"}
+                />
+              )}
             </div>
           </section>
 

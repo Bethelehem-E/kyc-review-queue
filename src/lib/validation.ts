@@ -71,8 +71,18 @@ export const decisionInputSchema = z
 export type DecisionInput = z.infer<typeof decisionInputSchema>;
 
 export const queueFilterSchema = z.object({
-  status: z.enum(["ALL", "PENDING", "APPROVED", "REJECTED", "MORE_INFO_REQUESTED"]).default("ALL"),
+  status: z
+    .enum([
+      "ALL",
+      "PENDING",
+      "AWAITING_SECOND_APPROVAL",
+      "APPROVED",
+      "REJECTED",
+      "MORE_INFO_REQUESTED",
+    ])
+    .default("ALL"),
   risk: z.enum(["ALL", "LOW", "MEDIUM", "HIGH"]).default("ALL"),
+  assignment: z.enum(["ALL", "MINE", "UNCLAIMED"]).default("ALL"),
   search: z.string().max(100).default(""),
   sort: z.enum(["OLDEST", "NEWEST", "RISK", "STATUS"]).default("OLDEST"),
 });
@@ -83,6 +93,7 @@ export type QueueFilter = z.infer<typeof queueFilterSchema>;
 export function parseQueueFilter(input: {
   status?: string;
   risk?: string;
+  assignment?: string;
   search?: string;
   sort?: string;
 }): QueueFilter {
@@ -93,6 +104,8 @@ export function parseQueueFilter(input: {
   return {
     status: queueFilterSchema.shape.status.safeParse(input.status).data ?? defaults.status,
     risk: queueFilterSchema.shape.risk.safeParse(input.risk).data ?? defaults.risk,
+    assignment:
+      queueFilterSchema.shape.assignment.safeParse(input.assignment).data ?? defaults.assignment,
     search: (input.search ?? "").slice(0, 100),
     sort: queueFilterSchema.shape.sort.safeParse(input.sort).data ?? defaults.sort,
   };
