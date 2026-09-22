@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ANALYST
+  ADMIN
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CaseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MORE_INFO_REQUESTED
+}
+
+enum AuditAction {
+  CASE_VIEWED
+  CASE_APPROVED
+  CASE_REJECTED
+  CASE_MORE_INFO_REQUESTED
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  role         Role         @default(ANALYST)
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  decisions    Decision[]
+  auditEvents  AuditEvent[]
+
+  @@map("users")
+}
+
+/// Customer PII lives here and here only. It is never copied into audit_events.
+model Case {
+  id              String       @id @default(cuid())
+  caseId          String       @unique
+  customerName    String
+  customerEmail   String
+  customerCountry String
+  dateOfBirth     DateTime
+  /// Last 4 digits only; full government IDs are never stored in this prototype.
+  govIdLast4      String
+  accountType     String
+  riskLevel       RiskLevel
+  status          CaseStatus   @default(PENDING)
+  submittedAt     DateTime
+  updatedAt       DateTime     @updatedAt
+  riskFlags       RiskFlag[]
+  decisions       Decision[]
+  auditEvents     AuditEvent[]
+
+  @@index([status, submittedAt])
+  @@index([riskLevel])
+  @@map("cases")
+}
+
+model RiskFlag {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  code        String
+  description String
+  severity    RiskLevel
+
+  @@index([caseId])
+  @@map("risk_flags")
+}
+
+model Decision {
+  id        String     @id @default(cuid())
+  caseId    String
+  case      Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User       @relation(fields: [actorId], references: [id])
+  fromStatus CaseStatus
+  toStatus  CaseStatus
+  reason    String?
+  createdAt DateTime   @default(now())
+
+  @@index([caseId, createdAt])
+  @@map("decisions")
+}
+
+/// Append-only. UPDATE and DELETE are blocked by database triggers
+/// (see prisma/migrations/*_audit_immutability). Never store customer PII here.
+model AuditEvent {
+  id         String      @id @default(cuid())
+  caseId     String?
+  case       Case?       @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  actorId    String?
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actorEmail String
+  actorName  String
+  action     AuditAction
+  fromStatus CaseStatus?
+  toStatus   CaseStatus?
+  reason     String?
+  createdAt  DateTime    @default(now())
+
+  @@index([caseId, createdAt])
+  @@index([createdAt])
+  @@map("audit_events")
+}
