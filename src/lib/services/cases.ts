@@ -199,6 +199,19 @@ export async function decideCase(
   });
 }
 
+/** Analysts that appear in the audit trail, for the audit filter UI. */
+export async function listAuditActors() {
+  await requireActor();
+
+  const rows = await prisma.auditEvent.findMany({
+    distinct: ["actorEmail"],
+    orderBy: { actorName: "asc" },
+    select: { actorEmail: true, actorName: true },
+  });
+
+  return rows.map((row) => ({ email: row.actorEmail, name: row.actorName }));
+}
+
 export async function listAuditEvents(options: { caseId?: string; actorEmail?: string } = {}) {
   await requireActor();
 

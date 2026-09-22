@@ -10,11 +10,12 @@ export const REASON_MIN_LENGTH = 10;
 export const REASON_MAX_LENGTH = 1000;
 
 /**
- * Allow-list for reason free-text: letters, digits, whitespace and a small set
- * of punctuation. Rejects control characters, angle brackets, backslashes and
- * other payload-shaped input rather than trying to sanitise it after the fact.
+ * Allow-list for reason free-text: letters, digits, spaces and a small set of
+ * punctuation. Rejects every control character (including tabs and newlines),
+ * angle brackets, backslashes and other payload-shaped input rather than
+ * trying to sanitise it after the fact.
  */
-const REASON_ALLOWED = /^[\p{L}\p{N}\s.,;:!?'"()\-_/@%&+#]*$/u;
+const REASON_ALLOWED = /^[\p{L}\p{N} .,;:!?'"()\-_/@%&+#]*$/u;
 
 export const reasonSchema = z
   .string()
@@ -77,3 +78,22 @@ export const queueFilterSchema = z.object({
 });
 
 export type QueueFilter = z.infer<typeof queueFilterSchema>;
+
+/** Unknown or malformed filter values fall back to the defaults. */
+export function parseQueueFilter(input: {
+  status?: string;
+  risk?: string;
+  search?: string;
+  sort?: string;
+}): QueueFilter {
+  const defaults = queueFilterSchema.parse({});
+  const parsed = queueFilterSchema.safeParse(input);
+  if (parsed.success) return parsed.data;
+
+  return {
+    status: queueFilterSchema.shape.status.safeParse(input.status).data ?? defaults.status,
+    risk: queueFilterSchema.shape.risk.safeParse(input.risk).data ?? defaults.risk,
+    search: (input.search ?? "").slice(0, 100),
+    sort: queueFilterSchema.shape.sort.safeParse(input.sort).data ?? defaults.sort,
+  };
+}

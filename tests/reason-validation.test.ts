@@ -6,7 +6,9 @@ vi.mock("@/lib/auth", () => ({ auth: authMock }));
 
 const { prisma } = await import("@/lib/db");
 const { ValidationError, decideCase } = await import("@/lib/services/cases");
-const { REASON_MAX_LENGTH, decisionInputSchema } = await import("@/lib/validation");
+const { REASON_MAX_LENGTH, decisionInputSchema, parseQueueFilter } = await import(
+  "@/lib/validation"
+);
 const { createTestCase, createTestUser } = await import("./helpers");
 
 const INVALID_REASONS: [string, string][] = [
@@ -14,6 +16,10 @@ const INVALID_REASONS: [string, string][] = [
   ["html injection", "Rejected <img src=x onerror=alert(1)> per policy"],
   ["null byte", "Rejected for fraud\u0000 concerns"],
   ["control characters", "Rejected for fraud\u0007\u001b[31m concerns"],
+  ["embedded newline", "Rejected for fraud\nconcerns about the applicant"],
+  ["embedded tab", "Rejected for fraud\tconcerns about the applicant"],
+  ["carriage return", "Rejected for fraud\rconcerns about the applicant"],
+  ["vertical tab", "Rejected for fraud\u000bconcerns about the applicant"],
   ["template injection", "Rejected ${process.env.DATABASE_URL} concerns"],
   ["backslash escape", "Rejected \\x41\\x42 concerns"],
   ["only whitespace", "            "],
@@ -58,6 +64,23 @@ describe("case reason validation", () => {
     const event = await prisma.auditEvent.findFirstOrThrow({ where: { caseId: testCase.id } });
     expect(event.reason).toBe(reason);
     expect(await prisma.case.count({ where: { id: testCase.id } })).toBe(1);
+  });
+
+  it("falls back to defaults for unknown queue filter values", () => {
+    expect(parseQueueFilter({ status: "BOGUS", risk: "NOPE", sort: "NOPE" })).toEqual({
+      status: "ALL",
+      risk: "ALL",
+      search: "",
+      sort: "OLDEST",
+    });
+  });
+
+  it("keeps the valid parts of a partially invalid queue filter", () => {
+    expect(parseQueueFilter({ status: "PENDING", risk: "NOPE", search: "KYC-1001" })).toMatchObject({
+      status: "PENDING",
+      risk: "ALL",
+      search: "KYC-1001",
+    });
   });
 
   it("accepts ordinary analyst prose, including accents and punctuation", () => {

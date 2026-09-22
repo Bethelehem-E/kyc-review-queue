@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { formatDate, statusLabel } from "@/components/ui";
-import { listAuditEvents, requireActor } from "@/lib/services/cases";
+import { listAuditActors, listAuditEvents, requireActor } from "@/lib/services/cases";
+import { AuditFilters } from "./AuditFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,10 @@ export default async function AuditPage({
   const caseId = typeof raw.caseId === "string" ? raw.caseId.slice(0, 64) : undefined;
   const actorEmail = typeof raw.actorEmail === "string" ? raw.actorEmail.slice(0, 254) : undefined;
 
-  const events = await listAuditEvents({ caseId, actorEmail });
+  const [events, analysts] = await Promise.all([
+    listAuditEvents({ caseId, actorEmail }),
+    listAuditActors(),
+  ]);
 
   return (
     <AppShell actor={actor}>
@@ -24,6 +28,8 @@ export default async function AuditPage({
         Append-only record of every status change. Entries cannot be edited or deleted, and never
         contain customer identifiers.
       </p>
+
+      <AuditFilters caseId={caseId ?? ""} actorEmail={actorEmail ?? ""} analysts={analysts} />
 
       {caseId || actorEmail ? (
         <p className="mt-3 text-sm">

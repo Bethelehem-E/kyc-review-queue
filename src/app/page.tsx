@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { AgingBadge, RiskBadge, StatusBadge, formatDate } from "@/components/ui";
 import { agingLevel, listCases, requireActor } from "@/lib/services/cases";
-import { queueFilterSchema } from "@/lib/validation";
+import { parseQueueFilter } from "@/lib/validation";
 import { QueueFilters } from "./QueueFilters";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export default async function QueuePage({
 }) {
   const actor = await requireActor();
   const raw = await searchParams;
-  const filter = queueFilterSchema.parse({
+  const filter = parseQueueFilter({
     status: typeof raw.status === "string" ? raw.status : undefined,
     risk: typeof raw.risk === "string" ? raw.risk : undefined,
     search: typeof raw.search === "string" ? raw.search : undefined,
