@@ -7,6 +7,14 @@ import { QueueFilters } from "./QueueFilters";
 
 export const dynamic = "force-dynamic";
 
+const ACTION_LABEL: Record<string, string> = {
+  PENDING: "Review & decide",
+  MORE_INFO_REQUESTED: "Review & decide",
+  AWAITING_SECOND_APPROVAL: "Countersign",
+  APPROVED: "View case",
+  REJECTED: "View case",
+};
+
 export default async function QueuePage({
   searchParams,
 }: {
@@ -32,7 +40,8 @@ export default async function QueuePage({
         <div>
           <h1 className="text-xl font-semibold">Review queue</h1>
           <p className="mt-1 text-sm text-slate-600">
-            {cases.length} case{cases.length === 1 ? "" : "s"} matching your filters
+            {cases.length} case{cases.length === 1 ? "" : "s"} matching your filters — open a case to
+            approve, reject, or request more information.
           </p>
         </div>
       </div>
@@ -58,13 +67,16 @@ export default async function QueuePage({
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Assigned to</th>
               <th className="px-4 py-3 font-medium">Age</th>
+              <th className="px-4 py-3 font-medium">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {cases.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/cases/${c.caseId}`} className="text-slate-900 underline-offset-2 hover:underline">
+                  <Link href={`/cases/${c.caseId}`} className="text-sky-700 underline underline-offset-2">
                     {c.caseId}
                   </Link>
                 </td>
@@ -90,11 +102,19 @@ export default async function QueuePage({
                 <td className="px-4 py-3">
                   <AgingBadge level={agingLevel(c, now)} />
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <Link
+                    href={`/cases/${c.caseId}`}
+                    className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-slate-50"
+                  >
+                    {ACTION_LABEL[c.status]}
+                  </Link>
+                </td>
               </tr>
             ))}
             {cases.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                   No cases match these filters.
                 </td>
               </tr>
