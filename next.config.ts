@@ -26,8 +26,14 @@ const securityHeaders = [
   },
 ];
 
+const allowedOrigins = (process.env.SERVER_ACTION_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: allowedOrigins.length ? { serverActions: { allowedOrigins } } : {},
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
