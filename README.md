@@ -10,7 +10,7 @@ Built as a replacement pattern for internal apps currently living in Microsoft P
 
 | Page | Shows | Path |
 |---|---|---|
-| Review queue | Case ID, customer name, risk level, submission date, current status, plus aging/SLA alerts. Sort by oldest / newest / risk / status; filter by status, risk level, and free-text search. | `/` |
+| Review queue | Case ID, customer name, risk level, submission date, current status, plus aging/SLA alerts. Sort by oldest / newest / risk / status; filter by status, risk level, assignment, and free-text search. Each row has a Review & decide / Countersign / View case action. | `/` |
 | Case detail | Customer information, KYC status, risk level, risk flags, submitted date, previous decisions, and the case's audit history. Actions: Approve, Reject, Request more information. | `/cases/[caseId]` |
 | Audit history | Analyst name and email, action taken, timestamp, old status, new status, and reasoning. Filterable by case and analyst. Read-only. | `/audit` |
 
@@ -62,6 +62,7 @@ These exist **only** for the local prototype. See [`docs/security.md`](docs/secu
 | `AUTH_SECRET` | Signing key for session cookies (`openssl rand -base64 32`) |
 | `AUTH_TRUST_HOST` | `true` for local/dev and container deployments |
 | `SEED_PASSWORD` | Optional override for seeded user passwords |
+| `SERVER_ACTION_ALLOWED_ORIGINS` | Comma-separated hosts allowed to submit server actions. Only needed behind a reverse proxy, where Next rejects actions because the forwarded host differs from the request origin. |
 
 No secrets are committed; `.env` is gitignored and `.env.example` holds placeholders only.
 
