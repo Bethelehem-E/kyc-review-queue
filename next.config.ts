@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -11,7 +13,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Next.js injects inline bootstrap scripts; styles are Tailwind-generated.
-      "script-src 'self' 'unsafe-inline'",
+      // The dev server compiles modules with eval(), so 'unsafe-eval' is
+      // development-only and never sent in production.
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "connect-src 'self'",

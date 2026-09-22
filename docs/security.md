@@ -43,7 +43,7 @@ REVOKE UPDATE, DELETE, TRUNCATE ON audit_events FROM kyc_app;
 
 ## Transport and browser hardening
 
-`next.config.ts` sets, on every response: `Content-Security-Policy` (no third-party origins, `frame-ancestors 'none'`, `form-action 'self'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` disabling camera/microphone/geolocation, and HSTS. `poweredByHeader` is off.
+`next.config.ts` sets, on every response: `Content-Security-Policy` (no third-party origins, `frame-ancestors 'none'`, `form-action 'self'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` disabling camera/microphone/geolocation, and HSTS. `poweredByHeader` is off. `script-src` gains `'unsafe-eval'` only when `NODE_ENV !== "production"`, because the Next.js dev compiler evaluates modules with `eval()`; production responses never carry it.
 
 CSRF: server actions are protected by Next.js's origin check, and the Auth.js endpoints carry their own CSRF token. The JSON API relies on SameSite=Lax cookies; if you expose it to other origins, add an explicit CSRF token or a bearer-token scheme.
 
