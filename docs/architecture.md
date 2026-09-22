@@ -29,8 +29,8 @@ The rule that keeps this maintainable: **every mutation goes through `src/lib/se
 
 ## Data model
 
-- `User` — analyst or admin, bcrypt password hash.
-- `Case` — the customer record and its current `status`. All customer PII lives here and nowhere else.
+- `User` — analyst, reviewer or admin, bcrypt password hash.
+- `Case` — the customer record and its current `status`, plus the assignment (`assignedToId`) and any pending maker-checker proposal (`proposedStatus` / `proposedById` / `proposedReason`). All customer PII lives here and nowhere else.
 - `RiskFlag` — screening hits attached to a case.
 - `Decision` — the analyst-visible history of decisions, with reason text.
 - `AuditEvent` — append-only log: actor, action, old status, new status, reason, timestamp. No PII.
@@ -45,6 +45,13 @@ Indexes: `cases(status, submittedAt)` and `cases(riskLevel)` back the queue's de
 2. `decideCase` re-derives the actor from the server session (`requireActor`), checks the role, and parses the input with `decisionInputSchema`.
 3. In a single transaction: update `cases.status`, insert a `Decision`, insert an `AuditEvent`. Either all three land or none do.
 4. The status precondition (`PENDING` or `MORE_INFO_REQUESTED`) is checked inside the transaction, so two analysts racing on one case produce one decision and one `409`.
+5. If the case is claimed by someone else, the write is refused unless the actor is an admin.
+
+## Maker-checker
+
+A high-risk approve/reject does not finalise. `decideCase` writes the intended outcome to the case's proposal fields, moves the status to `AWAITING_SECOND_APPROVAL`, and records a `CASE_DECISION_PROPOSED` audit row — but deliberately writes **no `Decision` row**, so `decisions` stays a log of decisions that actually took effect. `resolveProposedDecision` is the checker half: it requires `REVIEWER` or `ADMIN`, refuses the proposer, and either confirms (clearing the proposal, writing the `Decision` attributed to the checker) or returns the case to `PENDING` with a required reason. Both halves run entirely inside one transaction with their audit rows.
+
+To change what needs a second approver, edit `requiresSecondApproval()` in `src/lib/services/cases.ts` — it is the single predicate the workflow consults.
 
 ## How to make common changes
 

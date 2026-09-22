@@ -50,13 +50,15 @@ async function main() {
   const analysts = await Promise.all(
     [
       { email: "analyst@kycdemo.test", name: "Ava Analyst", role: Role.ANALYST },
-      { email: "rmartin@kycdemo.test", name: "Rosa Martin", role: Role.ANALYST },
+      { email: "rmartin@kycdemo.test", name: "Rosa Martin", role: Role.REVIEWER },
       { email: "admin@kycdemo.test", name: "Adam Admin", role: Role.ADMIN },
     ].map((u) => prisma.user.create({ data: { ...u, passwordHash } }))
   );
 
+  const [ava] = analysts;
   const now = Date.now();
   const total = 60;
+  let proposalsSeeded = 0;
 
   for (let i = 0; i < total; i += 1) {
     const first = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)];
@@ -97,6 +99,67 @@ async function main() {
         riskFlags: { create: flags.map((f) => ({ code: f.code, description: f.description, severity: f.severity })) },
       },
     });
+
+    // Park a few high-risk proposals in the checker's inbox, and claim a slice
+    // of the open queue so the assignment filters have something to show.
+    if (status === CaseStatus.PENDING && riskLevel === RiskLevel.HIGH && proposalsSeeded < 4) {
+      proposalsSeeded += 1;
+      const proposedStatus = proposalsSeeded % 2 === 0 ? CaseStatus.REJECTED : CaseStatus.APPROVED;
+      const proposedReason =
+        proposedStatus === CaseStatus.APPROVED
+          ? "Enhanced due diligence complete; source of funds evidenced and screening hits cleared."
+          : "Adverse media confirms ongoing investigation; recommend declining under policy 4.2.";
+      const proposedAt = new Date(submittedAt.getTime() + 7_200_000);
+
+      await prisma.case.update({
+        where: { id: created.id },
+        data: {
+          status: CaseStatus.AWAITING_SECOND_APPROVAL,
+          proposedStatus,
+          proposedById: ava.id,
+          proposedReason,
+          proposedAt,
+          assignedToId: ava.id,
+          assignedAt: proposedAt,
+        },
+      });
+
+      await prisma.auditEvent.create({
+        data: {
+          caseId: created.id,
+          actorId: ava.id,
+          actorEmail: ava.email,
+          actorName: ava.name,
+          action: AuditAction.CASE_DECISION_PROPOSED,
+          fromStatus: CaseStatus.PENDING,
+          toStatus: CaseStatus.AWAITING_SECOND_APPROVAL,
+          reason: proposedReason,
+          createdAt: proposedAt,
+        },
+      });
+      continue;
+    }
+
+    if (status === CaseStatus.PENDING && rand() > 0.75) {
+      const owner = analysts[Math.floor(rand() * analysts.length)];
+      const claimedAt = new Date(submittedAt.getTime() + 1_800_000);
+      await prisma.case.update({
+        where: { id: created.id },
+        data: { assignedToId: owner.id, assignedAt: claimedAt },
+      });
+      await prisma.auditEvent.create({
+        data: {
+          caseId: created.id,
+          actorId: owner.id,
+          actorEmail: owner.email,
+          actorName: owner.name,
+          action: AuditAction.CASE_CLAIMED,
+          fromStatus: CaseStatus.PENDING,
+          toStatus: CaseStatus.PENDING,
+          createdAt: claimedAt,
+        },
+      });
+    }
 
     if (status !== CaseStatus.PENDING) {
       const actor = analysts[Math.floor(rand() * analysts.length)];

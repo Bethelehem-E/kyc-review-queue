@@ -17,6 +17,7 @@ export default async function QueuePage({
   const filter = parseQueueFilter({
     status: typeof raw.status === "string" ? raw.status : undefined,
     risk: typeof raw.risk === "string" ? raw.risk : undefined,
+    assignment: typeof raw.assignment === "string" ? raw.assignment : undefined,
     search: typeof raw.search === "string" ? raw.search : undefined,
     sort: typeof raw.sort === "string" ? raw.sort : undefined,
   });
@@ -55,6 +56,7 @@ export default async function QueuePage({
               <th className="px-4 py-3 font-medium">Risk level</th>
               <th className="px-4 py-3 font-medium">Submitted</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Assigned to</th>
               <th className="px-4 py-3 font-medium">Age</th>
             </tr>
           </thead>
@@ -74,6 +76,17 @@ export default async function QueuePage({
                 <td className="px-4 py-3">
                   <StatusBadge status={c.status} />
                 </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.assignedTo ? (
+                    c.assignedTo.id === actor.id ? (
+                      <span className="font-medium text-slate-900">You</span>
+                    ) : (
+                      c.assignedTo.name
+                    )
+                  ) : (
+                    <span className="text-slate-400">Unclaimed</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <AgingBadge level={agingLevel(c, now)} />
                 </td>
@@ -81,7 +94,7 @@ export default async function QueuePage({
             ))}
             {cases.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                   No cases match these filters.
                 </td>
               </tr>

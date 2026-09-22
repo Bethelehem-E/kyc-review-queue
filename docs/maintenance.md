@@ -36,7 +36,7 @@ The prototype seeds users. To add one against a real database:
 node -e "require('bcryptjs').hash(process.argv[1], 12).then(console.log)" 'their-password'
 ```
 
-then insert a `users` row with that hash and role `ANALYST` or `ADMIN`. Once you move to your IdP (see `docs/security.md`), user management moves there and this table becomes a role mapping only.
+then insert a `users` row with that hash and role `ANALYST`, `REVIEWER`, or `ADMIN` (only the latter two can countersign high-risk decisions). Once you move to your IdP (see `docs/security.md`), user management moves there and this table becomes a role mapping only.
 
 ## Secrets
 
@@ -48,7 +48,7 @@ Watch, at minimum:
 
 - 5xx rate on `/api/cases/*` and server-action failures
 - Postgres connection saturation (single Prisma pool; add PgBouncer for serverless)
-- Queue depth and age: `SELECT count(*) FROM cases WHERE status IN ('PENDING','MORE_INFO_REQUESTED') AND "submittedAt" < now() - interval '7 days'` — the same SLA signal the UI shows
+- Queue depth and age: `SELECT count(*) FROM cases WHERE status IN ('PENDING','AWAITING_SECOND_APPROVAL','MORE_INFO_REQUESTED') AND "submittedAt" < now() - interval '7 days'` — the same SLA signal the UI shows
 
 ## Troubleshooting
 
@@ -59,3 +59,5 @@ Watch, at minimum:
 | Login always fails after a deploy | `AUTH_SECRET` changed or differs across instances; all instances must share one value |
 | Tests fail with connection refused | `docker compose up -d db` |
 | `409` when deciding a case | The case already reached a final status, usually another analyst got there first. Reload the case |
+| `403` "assigned to another analyst" | Someone has claimed the case. They release it, or an admin acts on it |
+| High-risk case stuck in `AWAITING_SECOND_APPROVAL` | It needs a *different* `REVIEWER`/`ADMIN` to countersign; the proposer cannot clear their own proposal |

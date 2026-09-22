@@ -9,7 +9,7 @@
 ## Authorization, checked in three places
 
 1. **Middleware** (`src/middleware.ts`) — coarse route gate. Cheap, and the reason anonymous users see a redirect instead of a broken page.
-2. **Service layer** (`src/lib/services/cases.ts`) — the authoritative boundary. `requireActor()` re-derives the actor from the server session on every read and write; `assertCanDecide()` checks the role before any mutation. Middleware is never trusted here, because middleware can be bypassed by any code path that does not go through it.
+2. **Service layer** (`src/lib/services/cases.ts`) — the authoritative boundary. `requireActor()` re-derives the actor from the server session on every read and write; `assertCanDecide()` checks the role before any mutation, `assertCanCountersign()` enforces the four-eyes rule on high-risk decisions, and the assignment check refuses writes to a case someone else holds. Middleware is never trusted here, because middleware can be bypassed by any code path that does not go through it.
 3. **UI** (`DecisionPanel`) — hides or disables actions the user cannot take. This is UX only. `tests/authorization.test.ts` asserts that calling the API directly, with the UI bypassed entirely, still fails.
 
 ## Audit log integrity
@@ -61,5 +61,6 @@ CSRF: server actions are protected by Next.js's origin check, and the Auth.js en
 - No rate limiting, no account lockout, no MFA.
 - No field-level encryption of PII.
 - Case reads are not audited, only decisions.
-- Any authenticated analyst can view any case; there is no per-case assignment or need-to-know restriction.
+- Any authenticated analyst can *view* any case. Assignment locks who may act on a case, not who may read it; there is no need-to-know restriction on reads.
+- Maker-checker covers high-risk approve/reject only. A malicious analyst with two accounts still defeats four-eyes — that is an identity problem, solved by the IdP swap, not by this code.
 - An analyst can still paste PII into a free-text reason. Validation constrains the character set but cannot detect intent; consider a redaction pass or a reason-code dropdown if that matters to your compliance team.

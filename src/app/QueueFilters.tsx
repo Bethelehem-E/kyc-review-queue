@@ -4,8 +4,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import type { QueueFilter } from "@/lib/validation";
 
-const STATUS_OPTIONS = ["ALL", "PENDING", "MORE_INFO_REQUESTED", "APPROVED", "REJECTED"] as const;
+const STATUS_OPTIONS = [
+  "ALL",
+  "PENDING",
+  "AWAITING_SECOND_APPROVAL",
+  "MORE_INFO_REQUESTED",
+  "APPROVED",
+  "REJECTED",
+] as const;
 const RISK_OPTIONS = ["ALL", "HIGH", "MEDIUM", "LOW"] as const;
+const ASSIGNMENT_OPTIONS = [
+  { value: "ALL", label: "Anyone" },
+  { value: "MINE", label: "Assigned to me" },
+  { value: "UNCLAIMED", label: "Unclaimed" },
+] as const;
 const SORT_OPTIONS = [
   { value: "OLDEST", label: "Oldest first" },
   { value: "NEWEST", label: "Most recent" },
@@ -56,6 +68,20 @@ export function QueueFilters({ filter }: { filter: QueueFilter }) {
           {RISK_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {option === "ALL" ? "All risk levels" : option.toLowerCase()}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        Assignment
+        <select
+          value={filter.assignment}
+          onChange={(e) => update("assignment", e.target.value)}
+          className={selectClass}
+        >
+          {ASSIGNMENT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>

@@ -13,10 +13,13 @@ export async function createTestUser(role: Role = Role.ANALYST): Promise<Actor> 
   return { id: user.id, name: user.name, email: user.email, role };
 }
 
-export async function createTestCase(overrides: Partial<{ status: CaseStatus }> = {}) {
+export async function createTestCase(
+  overrides: Partial<{ status: CaseStatus; riskLevel: RiskLevel; assignedToId: string }> = {}
+) {
   counter += 1;
   return prisma.case.create({
     data: {
+      assignedToId: overrides.assignedToId,
       caseId: `TEST-${Date.now()}-${counter}`,
       customerName: "Test Customer",
       customerEmail: "test.customer@example.com",
@@ -24,8 +27,9 @@ export async function createTestCase(overrides: Partial<{ status: CaseStatus }> 
       dateOfBirth: new Date("1990-04-01"),
       govIdLast4: "4321",
       accountType: "Individual Checking",
-      riskLevel: RiskLevel.MEDIUM,
+      riskLevel: overrides.riskLevel ?? RiskLevel.MEDIUM,
       status: overrides.status ?? CaseStatus.PENDING,
+      assignedAt: overrides.assignedToId ? new Date() : undefined,
       submittedAt: new Date(),
     },
   });

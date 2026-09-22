@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   ANALYST
+  REVIEWER
   ADMIN
 }
 
@@ -20,6 +21,7 @@ enum RiskLevel {
 
 enum CaseStatus {
   PENDING
+  AWAITING_SECOND_APPROVAL
   APPROVED
   REJECTED
   MORE_INFO_REQUESTED
@@ -30,6 +32,10 @@ enum AuditAction {
   CASE_APPROVED
   CASE_REJECTED
   CASE_MORE_INFO_REQUESTED
+  CASE_CLAIMED
+  CASE_RELEASED
+  CASE_DECISION_PROPOSED
+  CASE_DECISION_RETURNED
   LOGIN_SUCCEEDED
   LOGIN_FAILED
 }
@@ -43,6 +49,8 @@ model User {
   createdAt    DateTime     @default(now())
   decisions    Decision[]
   auditEvents  AuditEvent[]
+  assignedCases Case[]      @relation("CaseAssignee")
+  proposedCases Case[]      @relation("CaseProposer")
 
   @@map("users")
 }
@@ -62,12 +70,23 @@ model Case {
   status          CaseStatus   @default(PENDING)
   submittedAt     DateTime
   updatedAt       DateTime     @updatedAt
+  /// Set while an analyst has claimed the case; only they may action it.
+  assignedToId    String?
+  assignedTo      User?        @relation("CaseAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedAt      DateTime?
+  /// Maker-checker: the decision a maker proposed, awaiting a second approver.
+  proposedStatus  CaseStatus?
+  proposedById    String?
+  proposedBy      User?        @relation("CaseProposer", fields: [proposedById], references: [id], onDelete: SetNull)
+  proposedReason  String?
+  proposedAt      DateTime?
   riskFlags       RiskFlag[]
   decisions       Decision[]
   auditEvents     AuditEvent[]
 
   @@index([status, submittedAt])
   @@index([riskLevel])
+  @@index([assignedToId])
   @@map("cases")
 }
 
